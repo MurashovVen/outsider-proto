@@ -1,0 +1,15 @@
+syntax = "proto3";
+package whether;
+
+option go_package = "github.com/MurashovVen/outsider-proto/whether/golang";
+
+import "google/protobuf/empty.proto";
+
+service Whether {
+  rpc ActionProcess(ActionProcessRequest) returns (google.protobuf.Empty);
+}
+
+message ActionProcessRequest {
+  int64 from_chat_id = 1;
+  string action = 2;
+}
