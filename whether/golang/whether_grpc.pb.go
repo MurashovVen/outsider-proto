@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WhetherClient interface {
 	ActionProcess(ctx context.Context, in *ActionProcessRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Configurations(ctx context.Context, in *ConfigurationFilter, opts ...grpc.CallOption) (Whether_ConfigurationsClient, error)
 }
 
 type whetherClient struct {
@@ -43,11 +44,44 @@ func (c *whetherClient) ActionProcess(ctx context.Context, in *ActionProcessRequ
 	return out, nil
 }
 
+func (c *whetherClient) Configurations(ctx context.Context, in *ConfigurationFilter, opts ...grpc.CallOption) (Whether_ConfigurationsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Whether_ServiceDesc.Streams[0], "/whether.Whether/Configurations", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &whetherConfigurationsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Whether_ConfigurationsClient interface {
+	Recv() (*Configuration, error)
+	grpc.ClientStream
+}
+
+type whetherConfigurationsClient struct {
+	grpc.ClientStream
+}
+
+func (x *whetherConfigurationsClient) Recv() (*Configuration, error) {
+	m := new(Configuration)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // WhetherServer is the server API for Whether service.
 // All implementations must embed UnimplementedWhetherServer
 // for forward compatibility
 type WhetherServer interface {
 	ActionProcess(context.Context, *ActionProcessRequest) (*emptypb.Empty, error)
+	Configurations(*ConfigurationFilter, Whether_ConfigurationsServer) error
 	mustEmbedUnimplementedWhetherServer()
 }
 
@@ -57,6 +91,9 @@ type UnimplementedWhetherServer struct {
 
 func (UnimplementedWhetherServer) ActionProcess(context.Context, *ActionProcessRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ActionProcess not implemented")
+}
+func (UnimplementedWhetherServer) Configurations(*ConfigurationFilter, Whether_ConfigurationsServer) error {
+	return status.Errorf(codes.Unimplemented, "method Configurations not implemented")
 }
 func (UnimplementedWhetherServer) mustEmbedUnimplementedWhetherServer() {}
 
@@ -89,6 +126,27 @@ func _Whether_ActionProcess_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Whether_Configurations_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ConfigurationFilter)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WhetherServer).Configurations(m, &whetherConfigurationsServer{stream})
+}
+
+type Whether_ConfigurationsServer interface {
+	Send(*Configuration) error
+	grpc.ServerStream
+}
+
+type whetherConfigurationsServer struct {
+	grpc.ServerStream
+}
+
+func (x *whetherConfigurationsServer) Send(m *Configuration) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // Whether_ServiceDesc is the grpc.ServiceDesc for Whether service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -101,6 +159,12 @@ var Whether_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Whether_ActionProcess_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Configurations",
+			Handler:       _Whether_Configurations_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "whether.proto",
 }
